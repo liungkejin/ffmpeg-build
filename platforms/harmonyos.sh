@@ -3,7 +3,7 @@
 setup_harmonyos_toolchain() {
     local arch=$1
 
-    local harmonyos_ndk="${OHOS_NDK:-${HARMONY_NDK:-}}"
+    local harmonyos_ndk="${OHOS_NDK:-${HARMONY_NDK:-/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native}}"
     if [ -z "$harmonyos_ndk" ]; then
         log_error "OHOS_NDK or HARMONY_NDK environment variable is not set"
         return 1
@@ -27,14 +27,14 @@ setup_harmonyos_toolchain() {
     case "$arch" in
         arm64-v8a|aarch64)
             export ARCH="aarch64"
-            export HOST="aarch64-unknown-linux-ohos"
+            export HOST="aarch64-linux"
             export LIB_ARCH="aarch64-linux-ohos"
             export TOOLCHAIN_ARCH="aarch64-unknown-linux-ohos"
             export DISABLE_ASM=""
             ;;
         x86_64)
             export ARCH="x86_64"
-            export HOST="x86_64-unknown-linux-ohos"
+            export HOST="x86_64-linux"
             export LIB_ARCH="x86_64-linux-ohos"
             export TOOLCHAIN_ARCH="x86_64-unknown-linux-ohos"
             export DISABLE_ASM=""
@@ -57,7 +57,7 @@ setup_harmonyos_toolchain() {
     export OBJDUMP="$llvm_dir/bin/llvm-objdump"
     export READELF="$llvm_dir/bin/llvm-readelf"
 
-    export CROSS_PREFIX="$llvm_dir/bin/aarch64-unknown-linux-ohos-"
+    export CROSS_PREFIX="$llvm_dir/bin/llvm-"
 
     export TARGET_OS="linux"
     export HOST_OS="linux"

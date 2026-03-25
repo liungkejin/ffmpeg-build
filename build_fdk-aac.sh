@@ -49,9 +49,20 @@ setup_toolchain_for_build() {
 build_fdk_aac() {
     setup_toolchain_for_build
 
-    if [ -f "Makefile" ]; then
-        make clean 2>/dev/null || true
+    local cfg_flags=""
+    if [ "$LIBTYPE" = "shared" ]; then
+        # cfg_flags="$cfg_flags --enable-shared=yes --enable-static=no --enable-aix-soname=both"
+        log_error "Shared library is not supported on $PLATFORM"
+        exit 1
+    else
+        cfg_flags="$cfg_flags --enable-static=yes --enable-shared=no"
     fi
+
+    if [ -f "Makefile" ]; then
+        make distclean 2>/dev/null || true
+    fi
+    rm -rf .libs
+    rm -rf autom4te.cache
 
     if [ ! -f "autogen.sh" ]; then
         log_error "autogen.sh not found. This script must be run from the fdk-aac source directory."
@@ -60,35 +71,34 @@ build_fdk_aac() {
 
     ./autogen.sh
 
-    local cfg_flags=""
-    if [ "$LIBTYPE" = "shared" ]; then
-        cfg_flags="$cfg_flags --enable-shared --disable-static"
-    else
-        cfg_flags="$cfg_flags --enable-static --disable-shared"
-    fi
-
     cfg_flags="$cfg_flags
         --disable-dependency-tracking
         --with-pic=yes
-        --prefix=$INSTALL_DIR
-        --disable-asm"
+        --prefix=$INSTALL_DIR"
 
+    local inherited_cflags="${CFLAGS:-}"
+    local inherited_cxxflags="${CXXFLAGS:-$inherited_cflags}"
+    local inherited_ldflags="${LDFLAGS:-}"
 
-    export CFLAGS="-O3 -fPIC --sysroot=${SYSROOT}"
-    export CXXFLAGS="-O3 -fPIC --sysroot=${SYSROOT}"
+    export CFLAGS="-O3${inherited_cflags:+ $inherited_cflags}"
+    export CXXFLAGS="-O3${inherited_cxxflags:+ $inherited_cxxflags}"
+    export LDFLAGS="$inherited_ldflags"
 
     case "$PLATFORM" in
         android)
             cfg_flags="$cfg_flags --host=$TOOLCHAIN_ARCH --with-sysroot=$SYSROOT"
-            extra_cflags="$extra_cflags --sysroot=$SYSROOT"
+            CFLAGS="$CFLAGS --sysroot=$SYSROOT"
+            CXXFLAGS="$CXXFLAGS --sysroot=$SYSROOT"
             ;;
         harmonyos)
             cfg_flags="$cfg_flags --host=$TOOLCHAIN_ARCH --with-sysroot=$SYSROOT"
-            extra_cflags="$extra_cflags --sysroot=$SYSROOT"
+            CFLAGS="$CFLAGS --sysroot=$SYSROOT"
+            CXXFLAGS="$CXXFLAGS --sysroot=$SYSROOT"
             ;;
         ios)
             cfg_flags="$cfg_flags --host=$HOST"
-            extra_cflags="$extra_cflags -fembed-bitcode"
+            CFLAGS="$CFLAGS -fembed-bitcode"
+            CXXFLAGS="$CXXFLAGS -fembed-bitcode"
             ;;
         macos)
             cfg_flags="$cfg_flags --host=$HOST"
@@ -101,12 +111,13 @@ build_fdk_aac() {
             ;;
     esac
 
+    log_info "Configuring fdk-aac with CFLAGS: $CFLAGS"
     log_info "Configuring fdk-aac with flags: $cfg_flags"
 
+    mkdir -p "$INSTALL_DIR"
     ./configure $cfg_flags
 
-    make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
-    make install
+    make -j4 && make install
 
     cd $CUR_DIR
 }

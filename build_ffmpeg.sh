@@ -49,6 +49,8 @@ setup_toolchain_for_build() {
 build_ffmpeg() {
     setup_toolchain_for_build
 
+    local build_dir="build/$PLATFORM/$ARCH"
+
     if [ -f "compat/strtod.o" ]; then
         make clean 2>/dev/null || true
         rm -rf compat/strtod.o
@@ -162,14 +164,19 @@ build_ffmpeg() {
         --prefix=$INSTALL_DIR
         "
 
-    local extra_cflags=""
-    local extra_ldflags=""
+    local inherited_cflags="${CFLAGS:-}"
+    local inherited_ldflags="${LDFLAGS:-}"
+    local extra_cflags="$inherited_cflags"
+    local extra_ldflags="$inherited_ldflags"
+    local host_cc=""
+    local host_cflags=""
+    local host_ldflags=""
 
-    local dep_x264="$OUTPUTS_DIR/x264/$ARCH"
+    local dep_x264="$OUTPUTS_DIR/x264/$PLATFORM/$ARCH"
     local dep_x264_inc="$dep_x264/include"
     local dep_x264_lib="$dep_x264/lib"
 
-    local dep_fdk_aac="$OUTPUTS_DIR/fdk-aac/$ARCH"
+    local dep_fdk_aac="$OUTPUTS_DIR/fdk-aac/$PLATFORM/$ARCH"
     local dep_fdk_aac_inc="$dep_fdk_aac/include"
     local dep_fdk_aac_lib="$dep_fdk_aac/lib"
 
@@ -203,12 +210,14 @@ build_ffmpeg() {
             cfg_flags="$cfg_flags --cc=$CC --cxx=$CXX"
             ;;
         ios)
-            cfg_flags="$cfg_flags --enable-cross-compile --target-os=ios --sysroot=$SYSROOT"
-            cfg_flags="$cfg_flags --cc=$CC --cxx=$CXX --enable-armv6 --enable-armv6t2"
-            extra_cflags="$extra_cflags -fembed-bitcode"
+            cfg_flags="$cfg_flags --enable-cross-compile --target-os=darwin --sysroot=$SYSROOT"
+            cfg_flags="$cfg_flags --cc=$CC --cxx=$CXX"
             ;;
         macos)
             cfg_flags="$cfg_flags --target-os=darwin --cc=$CC --cxx=$CXX"
+            host_cc="$CC"
+            host_cflags="$extra_cflags"
+            host_ldflags="$extra_ldflags"
             ;;
         linux)
             cfg_flags="$cfg_flags --target-os=linux --cc=$CC --cxx=$CXX"
@@ -221,14 +230,21 @@ build_ffmpeg() {
             ;;
     esac
 
-    cfg_flags="$cfg_flags --extra-cflags=\"$extra_cflags\" --extra-ldflags=\"$extra_ldflags\""
-
     log_info "Configuring FFmpeg with flags: $cfg_flags"
+    log_info "Configuring FFmpeg with extra CFLAGS: $extra_cflags"
+    log_info "Configuring FFmpeg with extra LDFLAGS: $extra_ldflags"
+    [ -n "$host_cc" ] && log_info "Configuring FFmpeg with host CC: $host_cc"
 
-    mkdir -p build/$ARCH
-    cd build/$ARCH
+    rm -rf "$build_dir"
+    mkdir -p "$build_dir"
+    cd "$build_dir"
 
-    ./../../configure $cfg_flags
+    ./../../../configure $cfg_flags \
+        ${host_cc:+--host-cc="$host_cc"} \
+        ${host_cflags:+--host-cflags="$host_cflags"} \
+        ${host_ldflags:+--host-ldflags="$host_ldflags"} \
+        --extra-cflags="$extra_cflags" \
+        --extra-ldflags="$extra_ldflags"
 
     cp config.* $INSTALL_DIR 2>/dev/null || true
 

@@ -49,6 +49,8 @@ setup_toolchain_for_build() {
 build_x264() {
     setup_toolchain_for_build
 
+    local build_dir="build/$PLATFORM/$ARCH"
+
     if [ -f "compat/strtod.o" ]; then
         make clean 2>/dev/null || true
         rm -rf compat/strtod.o
@@ -59,8 +61,13 @@ build_x264() {
         rm -rf config.h config.mak
     fi
 
-    export CFLAGS="-O3 -fPIC"
-    export LDFLAGS=""
+    local inherited_cflags="${CFLAGS:-}"
+    local inherited_cxxflags="${CXXFLAGS:-$inherited_cflags}"
+    local inherited_ldflags="${LDFLAGS:-}"
+
+    export CFLAGS="-O3${inherited_cflags:+ $inherited_cflags}"
+    export CXXFLAGS="-O3${inherited_cxxflags:+ $inherited_cxxflags}"
+    export LDFLAGS="$inherited_ldflags"
 
     local cfg_flags=""
 
@@ -86,9 +93,13 @@ build_x264() {
     case "$PLATFORM" in
         android)
             cfg_flags="$cfg_flags --host=$HOST --sysroot=$SYSROOT --cross-prefix=$CROSS_PREFIX"
+            CFLAGS="$CFLAGS --sysroot=$SYSROOT"
+            CXXFLAGS="$CXXFLAGS --sysroot=$SYSROOT"
             ;;
         harmonyos)
             cfg_flags="$cfg_flags --host=$HOST --sysroot=$SYSROOT --cross-prefix=$CROSS_PREFIX"
+            CFLAGS="$CFLAGS --sysroot=$SYSROOT"
+            CXXFLAGS="$CXXFLAGS --sysroot=$SYSROOT"
             ;;
         ios)
             cfg_flags="$cfg_flags --host=$HOST"
@@ -107,18 +118,24 @@ build_x264() {
             ;;
     esac
 
+    log_info "Configuring x264 with CC: $CC"
     log_info "Configuring x264 with CFLAGS: $CFLAGS"
     log_info "Configuring x264 with LDFLAGS: $LDFLAGS"
 
-    mkdir -p build/$ARCH
-    cd build/$ARCH
+    rm -rf "$build_dir"
+    mkdir -p "$build_dir"
+    cd "$build_dir"
 
-    if [ "$PLATFORM" = "ios" ] || [ "$PLATFORM" = "macos" ]; then
-        LDFLAGS="-arch $ARCH" CC="$CC" CXX="$CXX" \
-            ../../configure $cfg_flags
-    else
-        ./../../configure $cfg_flags --extra-cflags="$CFLAGS" --extra-ldflags="$LDFLAGS"
-    fi
+    CC="$CC" \
+    CXX="$CXX" \
+    AR="$AR" \
+    RANLIB="$RANLIB" \
+    STRIP="$STRIP" \
+    NM="$NM" \
+    CFLAGS="$CFLAGS" \
+    CXXFLAGS="$CXXFLAGS" \
+    LDFLAGS="$LDFLAGS" \
+        ../../../configure $cfg_flags
 
     cp config.* $INSTALL_DIR 2>/dev/null || true
     make -j4

@@ -9,9 +9,13 @@ setup_macos_toolchain() {
     fi
 
     local sdk_name="macosx"
+    local deployment_target="${MACOSX_DEPLOYMENT_TARGET:-11.0}"
 
     case "$arch" in
         x86_64|arm64|universal)
+            ;;
+        arm64-v8a|aarch64)
+            arch="arm64"
             ;;
         *)
             log_error "Unknown macOS architecture: $arch"
@@ -28,6 +32,7 @@ setup_macos_toolchain() {
     export SDK_PATH="$sdk_path"
     export SYSROOT="$sdk_path"
     export TARGET_OS="darwin"
+    export DEPLOYMENT_TARGET="$deployment_target"
 
     local toolchain=$(xcrun --sdk "$sdk_name" -find clang 2>/dev/null)
     local toolchain_path=$(dirname "$toolchain")
@@ -47,16 +52,25 @@ setup_macos_toolchain() {
             ;;
         arm64)
             export ARCH="arm64"
-            export HOST="arm64-apple-darwin"
+            export HOST="aarch64-apple-darwin"
             ;;
         universal)
             export ARCH="arm64 x86_64"
-            export HOST="arm64-apple-darwin"
+            export HOST="aarch64-apple-darwin"
             ;;
     esac
 
     export CROSS_PREFIX=""
     export DISABLE_ASM=""
+    if [ "$ARCH" = "arm64 x86_64" ]; then
+        export CFLAGS="-arch arm64 -arch x86_64 -isysroot $SYSROOT -mmacosx-version-min=$DEPLOYMENT_TARGET"
+        export CXXFLAGS="-arch arm64 -arch x86_64 -isysroot $SYSROOT -mmacosx-version-min=$DEPLOYMENT_TARGET"
+        export LDFLAGS="-arch arm64 -arch x86_64 -isysroot $SYSROOT -mmacosx-version-min=$DEPLOYMENT_TARGET"
+    else
+        export CFLAGS="-arch $ARCH -isysroot $SYSROOT -mmacosx-version-min=$DEPLOYMENT_TARGET"
+        export CXXFLAGS="-arch $ARCH -isysroot $SYSROOT -mmacosx-version-min=$DEPLOYMENT_TARGET"
+        export LDFLAGS="-arch $ARCH -isysroot $SYSROOT -mmacosx-version-min=$DEPLOYMENT_TARGET"
+    fi
 
     return 0
 }

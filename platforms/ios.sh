@@ -10,17 +10,21 @@ setup_ios_toolchain() {
 
     local deployment_target="13.0"
     local sdk_name="iphoneos"
-    local archs_for_build="arm64"
+    local min_flag=""
 
     case "$arch" in
-        arm64)
+        arm64|arm64-v8a|aarch64)
+            arch="arm64"
+            min_flag="-miphoneos-version-min=$deployment_target"
             ;;
         x86_64)
             sdk_name="iphonesimulator"
             deployment_target="13.0"
+            min_flag="-mios-simulator-version-min=$deployment_target"
             ;;
         universal)
-            archs_for_build="arm64 x86_64"
+            arch="arm64"
+            min_flag="-miphoneos-version-min=$deployment_target"
             ;;
         *)
             log_error "Unknown iOS architecture: $arch"
@@ -53,21 +57,23 @@ setup_ios_toolchain() {
     case "$arch" in
         arm64)
             export ARCH="arm64"
-            export HOST="arm64-ios"
-            export AS="arm64-apple-darwin-as"
+            export HOST="aarch64-apple-darwin"
             ;;
         x86_64)
             export ARCH="x86_64"
-            export HOST="x86_64-ios"
+            export HOST="x86_64-apple-darwin"
             ;;
         universal)
-            export ARCH="arm64 x86_64"
-            export HOST="arm64-ios"
+            export ARCH="arm64"
+            export HOST="aarch64-apple-darwin"
             ;;
     esac
 
     export CROSS_PREFIX=""
     export DISABLE_ASM=""
+    export CFLAGS="-arch $ARCH -isysroot $SYSROOT $min_flag"
+    export CXXFLAGS="-arch $ARCH -isysroot $SYSROOT $min_flag"
+    export LDFLAGS="-arch $ARCH -isysroot $SYSROOT $min_flag"
 
     return 0
 }
