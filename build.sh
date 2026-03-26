@@ -128,7 +128,7 @@ build_project_abi() {
 
     log_info "-----------Building $proj for $platform/$arch (libtype: $libtype)-----------"
 
-    local install_dir="$CUR_DIR/outputs/$proj/$platform/$arch"
+    local install_dir="$CUR_DIR/outputs/$platform/$proj/$arch"
     export OUTPUTS_DIR="$CUR_DIR/outputs"
     export INSTALL_DIR="$install_dir"
     export PROJ_DIR="$CUR_DIR/source/$proj"

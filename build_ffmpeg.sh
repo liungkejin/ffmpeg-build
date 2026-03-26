@@ -99,7 +99,7 @@ build_ffmpeg() {
     cfg_flags="$cfg_flags
         --disable-all
         --enable-swscale
-        --disable-network
+        --enable-network
         --disable-avdevice
         --enable-gpl
         --disable-swscale-alpha
@@ -124,7 +124,12 @@ build_ffmpeg() {
         --enable-decoder=h264
         --enable-decoder=hevc
         --enable-decoder=vp9
+        --enable-decoder=vp8
+        --enable-decoder=av1
         --enable-decoder=mp2
+        --enable-decoder=mpeg2video
+        --enable-decoder=mpeg4
+        --enable-decoder=prores
         --enable-demuxer=mp3
         --enable-demuxer=mov
         --enable-demuxer=aac
@@ -161,6 +166,9 @@ build_ffmpeg() {
         --enable-filter=amix
         --enable-filter=scale
         --enable-filter=overlay
+        --enable-filter=format
+        --enable-filter=hwupload
+        --enable-filter=hwdownload
         --prefix=$INSTALL_DIR
         "
 
@@ -171,6 +179,7 @@ build_ffmpeg() {
     local host_cc=""
     local host_cflags=""
     local host_ldflags=""
+    local hw_cfg_flags=""
 
     local dep_x264="$OUTPUTS_DIR/x264/$PLATFORM/$ARCH"
     local dep_x264_inc="$dep_x264/include"
@@ -199,6 +208,83 @@ build_ffmpeg() {
         extra_cflags="$extra_cflags -I${dep_fdk_aac_inc}"
         extra_ldflags="$extra_ldflags -L${dep_fdk_aac_lib}"
     fi
+
+    case "$PLATFORM" in
+        android)
+            hw_cfg_flags="$hw_cfg_flags
+                --enable-jni
+                --enable-mediacodec
+                --enable-decoder=aac_mediacodec
+                --enable-decoder=mp3_mediacodec
+                --enable-decoder=mpeg2_mediacodec
+                --enable-decoder=mpeg4_mediacodec
+                --enable-decoder=h264_mediacodec
+                --enable-decoder=hevc_mediacodec
+                --enable-decoder=vp8_mediacodec
+                --enable-decoder=vp9_mediacodec
+                --enable-decoder=av1_mediacodec
+                --enable-encoder=h264_mediacodec
+                --enable-encoder=hevc_mediacodec
+                --enable-encoder=mpeg4_mediacodec
+                --enable-encoder=vp8_mediacodec
+                --enable-encoder=vp9_mediacodec
+                --enable-encoder=av1_mediacodec"
+            ;;
+        harmonyos)
+            hw_cfg_flags="$hw_cfg_flags
+                --enable-ohcodec
+                --enable-decoder=h264_oh
+                --enable-decoder=hevc_oh
+                --enable-encoder=h264_oh
+                --enable-encoder=hevc_oh"
+            ;;
+        ios|macos)
+            hw_cfg_flags="$hw_cfg_flags
+                --enable-videotoolbox
+                --enable-hwaccel=h264_videotoolbox
+                --enable-hwaccel=hevc_videotoolbox
+                --enable-hwaccel=vp9_videotoolbox
+                --enable-hwaccel=av1_videotoolbox
+                --enable-encoder=h264_videotoolbox
+                --enable-encoder=hevc_videotoolbox
+                --enable-encoder=prores_videotoolbox"
+            ;;
+        linux)
+            if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists libva; then
+                hw_cfg_flags="$hw_cfg_flags
+                    --enable-vaapi
+                    --enable-hwaccel=h264_vaapi
+                    --enable-hwaccel=hevc_vaapi
+                    --enable-hwaccel=vp9_vaapi
+                    --enable-hwaccel=av1_vaapi
+                    --enable-encoder=h264_vaapi
+                    --enable-encoder=hevc_vaapi
+                    --enable-encoder=vp8_vaapi
+                    --enable-encoder=vp9_vaapi
+                    --enable-encoder=av1_vaapi
+                    --enable-filter=scale_vaapi"
+            else
+                log_warn "libva not found, skipping VAAPI hardware acceleration"
+            fi
+            ;;
+        windows)
+            hw_cfg_flags="$hw_cfg_flags
+                --enable-mediafoundation
+                --enable-d3d11va
+                --enable-dxva2
+                --enable-hwaccel=h264_d3d11va
+                --enable-hwaccel=hevc_d3d11va
+                --enable-hwaccel=vp9_d3d11va
+                --enable-hwaccel=h264_dxva2
+                --enable-hwaccel=hevc_dxva2
+                --enable-hwaccel=vp9_dxva2
+                --enable-encoder=h264_mf
+                --enable-encoder=hevc_mf
+                --enable-encoder=av1_mf"
+            ;;
+    esac
+
+    cfg_flags="$cfg_flags $hw_cfg_flags"
 
     case "$PLATFORM" in
         android)
