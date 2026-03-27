@@ -77,7 +77,7 @@ get_host_for_arch() {
                 x86_64) echo "x86_64-linux-android" ;;
             esac
             ;;
-        harmonyos)
+        ohos)
             case "$arch" in
                 arm64-v8a) echo "aarch64-linux-ohos" ;;
                 x86_64) echo "x86_64-linux-ohos" ;;
@@ -128,7 +128,7 @@ get_cross_prefix() {
                 x86_64) echo "x86_64-linux-android" ;;
             esac
             ;;
-        harmonyos)
+        ohos)
             case "$arch" in
                 arm64-v8a) echo "aarch64-linux-ohos" ;;
                 x86_64) echo "x86_64-linux-ohos" ;;
@@ -178,7 +178,7 @@ get_target_os() {
 
     case "$platform" in
         android) echo "android" ;;
-        harmonyos) echo "linux" ;;
+        ohos) echo "linux" ;;
         ios) echo "ios" ;;
         macos) echo "darwin" ;;
         linux) echo "linux" ;;
@@ -191,7 +191,7 @@ get_toolchain_path() {
 
     case "$platform" in
         android) echo "$ANDROID_NDK/toolchains/llvm/prebuilt/$ANDROID_NDK_PLATFORM" ;;
-        harmonyos) echo "$OHOS_NDK/toolchains/llvm/prebuilt/$OHOS_NDK_PLATFORM" ;;
+        ohos) echo "$OHOS_NDK/toolchains/llvm/prebuilt/$OHOS_NDK_PLATFORM" ;;
         *) echo "" ;;
     esac
 }
@@ -201,7 +201,7 @@ setup_specific_toolchain() {
     local arch=$2
 
     case "$platform" in
-        android|harmonyos)
+        android|ohos)
             local toolchain_path=$(get_toolchain_path "$platform")
             if [ -d "$toolchain_path/bin" ]; then
                 export PATH="$toolchain_path/bin:$PATH"
@@ -234,7 +234,7 @@ clean_project() {
 check_platform_support() {
     local platform=$1
     case "$platform" in
-        android|harmonyos|ios|macos|linux|windows) return 0 ;;
+        android|ohos|ios|macos|linux|windows) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -243,7 +243,7 @@ get_default_arch() {
     local platform=$1
     case "$platform" in
         android) echo "arm64-v8a" ;;
-        harmonyos) echo "arm64-v8a" ;;
+        ohos) echo "arm64-v8a" ;;
         ios) echo "arm64" ;;
         macos) echo "arm64" ;;
         linux) echo "x86_64" ;;
@@ -255,7 +255,7 @@ get_supported_archs() {
     local platform=$1
     case "$platform" in
         android) echo "armeabi-v7a arm64-v8a x86 x86_64" ;;
-        harmonyos) echo "arm64-v8a x86_64" ;;
+        ohos) echo "arm64-v8a x86_64" ;;
         ios) echo "arm64 x86_64 universal" ;;
         macos) echo "x86_64 arm64 universal" ;;
         linux) echo "x86_64 arm64 armhf i386" ;;
@@ -268,7 +268,7 @@ show_help() {
 Usage: ./build.sh [OPTIONS]
 
 Options:
-  --platform=<platform>      Target platform: android|harmonyos|ios|macos|linux|windows (required)
+  --platform=<platform>      Target platform: android|ohos|ios|macos|linux|windows (required)
   --arch=<arch>             Target architecture (default: platform default)
   --libtype=<type>          Library type: static|shared|both (default: static)
   --ffmpeg-version=<ver>    FFmpeg version (default: 8.1)
@@ -282,10 +282,10 @@ Examples:
   ./build.sh --platform=linux --arch=x86_64 --ffmpeg-version=7.0
   ./build.sh --platform=windows --arch=x86_64 --libtype=both
 
-Supported Platforms: android, harmonyos, ios, macos, linux, windows
+Supported Platforms: android, ohos, ios, macos, linux, windows
 Supported Architectures per platform:
   android:    armeabi-v7a, arm64-v8a, x86, x86_64
-  harmonyos:  arm64-v8a, x86_64
+  ohos:  arm64-v8a, x86_64
   ios:        arm64, x86_64, universal
   macos:      x86_64, arm64, universal
   linux:      x86_64, arm64, armhf, i386

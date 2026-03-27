@@ -19,9 +19,9 @@ setup_toolchain_for_build() {
             source "$SCRIPT_DIR/platforms/android.sh"
             setup_android_toolchain "$ARCH"
             ;;
-        harmonyos)
-            source "$SCRIPT_DIR/platforms/harmonyos.sh"
-            setup_harmonyos_toolchain "$ARCH"
+        ohos)
+            source "$SCRIPT_DIR/platforms/ohos.sh"
+            setup_ohos_toolchain "$ARCH"
             ;;
         ios)
             source "$SCRIPT_DIR/platforms/ios.sh"
@@ -230,7 +230,7 @@ build_ffmpeg() {
                 --enable-encoder=vp9_mediacodec
                 --enable-encoder=av1_mediacodec"
             ;;
-        harmonyos)
+        ohos)
             hw_cfg_flags="$hw_cfg_flags
                 --enable-ohcodec
                 --enable-decoder=h264_oh
@@ -291,7 +291,7 @@ build_ffmpeg() {
             cfg_flags="$cfg_flags --enable-cross-compile --target-os=android --sysroot=$SYSROOT"
             cfg_flags="$cfg_flags --cc=$CC --cxx=$CXX"
             ;;
-        harmonyos)
+        ohos)
             cfg_flags="$cfg_flags --enable-cross-compile --target-os=linux --sysroot=$SYSROOT"
             cfg_flags="$cfg_flags --cc=$CC --cxx=$CXX"
             ;;

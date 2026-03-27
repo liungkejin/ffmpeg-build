@@ -19,9 +19,9 @@ setup_toolchain_for_build() {
             source "$SCRIPT_DIR/platforms/android.sh"
             setup_android_toolchain "$ARCH"
             ;;
-        harmonyos)
-            source "$SCRIPT_DIR/platforms/harmonyos.sh"
-            setup_harmonyos_toolchain "$ARCH"
+        ohos)
+            source "$SCRIPT_DIR/platforms/ohos.sh"
+            setup_ohos_toolchain "$ARCH"
             ;;
         ios)
             source "$SCRIPT_DIR/platforms/ios.sh"
@@ -90,7 +90,7 @@ build_fdk_aac() {
             CFLAGS="$CFLAGS --sysroot=$SYSROOT"
             CXXFLAGS="$CXXFLAGS --sysroot=$SYSROOT"
             ;;
-        harmonyos)
+        ohos)
             cfg_flags="$cfg_flags --host=$TOOLCHAIN_ARCH --with-sysroot=$SYSROOT"
             CFLAGS="$CFLAGS --sysroot=$SYSROOT"
             CXXFLAGS="$CXXFLAGS --sysroot=$SYSROOT"

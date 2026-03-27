@@ -22,6 +22,7 @@ parse_arguments() {
         case $1 in
             --platform=*)
                 PLATFORM="${1#*=}"
+                [[ "$PLATFORM" == "harmonyos" ]] && PLATFORM="ohos"
                 shift
                 ;;
             --arch=*)
@@ -93,8 +94,8 @@ setup_toolchain() {
         android)
             setup_android_toolchain "$arch"
             ;;
-        harmonyos)
-            setup_harmonyos_toolchain "$arch"
+        ohos)
+            setup_ohos_toolchain "$arch"
             ;;
         ios)
             setup_ios_toolchain "$arch"

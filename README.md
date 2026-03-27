@@ -31,7 +31,7 @@ ffmpeg-build/
 ├── build_ffmpeg.sh
 ├── platforms/
 │   ├── android.sh
-│   ├── harmonyos.sh
+│   ├── ohos.sh
 │   ├── ios.sh
 │   ├── linux.sh
 │   ├── macos.sh
@@ -131,9 +131,9 @@ export HARMONY_NDK=/path/to/openharmony/native
 
 | 项目 | static | shared | 备注 |
 |---|---|---|---|
-| x264 | 支持 | 支持 | 已验证 android/harmonyos/ios/macos |
+| x264 | 支持 | 支持 | 已验证 android/ohos/ios/macos |
 | fdk-aac | 支持 | 当前脚本不支持 | `build_fdk-aac.sh` 已显式禁止 shared |
-| FFmpeg | 支持 | 支持 | 已验证 android/harmonyos/ios/macos |
+| FFmpeg | 支持 | 支持 | 已验证 android/ohos/ios/macos |
 
 ### 已实际验证通过
 
@@ -245,7 +245,7 @@ export HARMONY_NDK=/path/to/openharmony/native
 ### HarmonyOS
 
 ```bash
-./build.sh --platform=harmonyos --arch=arm64-v8a --libtype=static
+./build.sh --platform=ohos --arch=arm64-v8a --libtype=static
 ```
 
 ### iOS

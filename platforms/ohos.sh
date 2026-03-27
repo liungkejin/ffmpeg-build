@@ -1,28 +1,27 @@
 #!/usr/bin/env bash
 
-setup_harmonyos_toolchain() {
+setup_ohos_toolchain() {
     local arch=$1
-
-    local harmonyos_ndk="${OHOS_NDK:-${HARMONY_NDK:-/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native}}"
-    if [ -z "$harmonyos_ndk" ]; then
-        log_error "OHOS_NDK or HARMONY_NDK environment variable is not set"
+    local ohos_ndk="${OHOS_NDK:-${HARMONYOS_NDK:-/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native}}"
+    if [ -z "$ohos_ndk" ]; then
+        log_error "OHOS_NDK or HARMONYOS_NDK environment variable is not set"
         return 1
     fi
 
-    if [ ! -d "$harmonyos_ndk" ]; then
-        log_error "HarmonyOS NDK not found at $harmonyos_ndk"
+    if [ ! -d "$ohos_ndk" ]; then
+        log_error "OHOS NDK not found at $ohos_ndk"
         return 1
     fi
 
-    export OHOS_NDK_ROOT="$harmonyos_ndk"
-    local llvm_dir="$harmonyos_ndk/llvm"
+    export OHOS_NDK_ROOT="$ohos_ndk"
+    local llvm_dir="$ohos_ndk/llvm"
 
     if [ ! -d "$llvm_dir" ]; then
         log_error "LLVM directory not found at $llvm_dir"
         return 1
     fi
 
-    export SYSROOT="$harmonyos_ndk/sysroot"
+    export SYSROOT="$ohos_ndk/sysroot"
 
     case "$arch" in
         arm64-v8a|aarch64)
@@ -40,13 +39,13 @@ setup_harmonyos_toolchain() {
             export DISABLE_ASM=""
             ;;
         *)
-            log_error "Unknown HarmonyOS architecture: $arch"
+            log_error "Unknown OHOS architecture: $arch"
             return 1
             ;;
     esac
 
-    export CC="$llvm_dir/bin/aarch64-unknown-linux-ohos-clang"
-    export CXX="$llvm_dir/bin/aarch64-unknown-linux-ohos-clang++"
+    export CC="$llvm_dir/bin/$TOOLCHAIN_ARCH-clang"
+    export CXX="$llvm_dir/bin/$TOOLCHAIN_ARCH-clang++"
     export AR="$llvm_dir/bin/llvm-ar"
     export AS="$llvm_dir/bin/llvm-as"
     export RANLIB="$llvm_dir/bin/llvm-ranlib"
