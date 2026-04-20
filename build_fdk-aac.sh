@@ -91,7 +91,7 @@ build_fdk_aac() {
             CXXFLAGS="$CXXFLAGS --sysroot=$SYSROOT"
             ;;
         ohos)
-            cfg_flags="$cfg_flags --host=$TOOLCHAIN_ARCH --with-sysroot=$SYSROOT"
+            cfg_flags="$cfg_flags --host=$HOST --with-sysroot=$SYSROOT"
             CFLAGS="$CFLAGS --sysroot=$SYSROOT"
             CXXFLAGS="$CXXFLAGS --sysroot=$SYSROOT"
             ;;

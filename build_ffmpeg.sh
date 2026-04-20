@@ -121,6 +121,7 @@ build_ffmpeg() {
         --enable-decoder=mp3
         --enable-decoder=aac
         --enable-decoder=aac_latm
+        --enable-encoder=aac
         --enable-decoder=h264
         --enable-decoder=hevc
         --enable-decoder=vp9
@@ -181,11 +182,11 @@ build_ffmpeg() {
     local host_ldflags=""
     local hw_cfg_flags=""
 
-    local dep_x264="$OUTPUTS_DIR/x264/$PLATFORM/$ARCH"
+    local dep_x264="$OUTPUTS_DIR/$PLATFORM/x264/$ARCH"
     local dep_x264_inc="$dep_x264/include"
     local dep_x264_lib="$dep_x264/lib"
 
-    local dep_fdk_aac="$OUTPUTS_DIR/fdk-aac/$PLATFORM/$ARCH"
+    local dep_fdk_aac="$OUTPUTS_DIR/$PLATFORM/fdk-aac/$ARCH"
     local dep_fdk_aac_inc="$dep_fdk_aac/include"
     local dep_fdk_aac_lib="$dep_fdk_aac/lib"
 
