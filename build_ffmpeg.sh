@@ -344,7 +344,7 @@ build_ffmpeg() {
     fi
 
 
-    if [ "$PLATFORM" = "android" ]; then
+    if [ "$PLATFORM" = "android" ] || [ "$PLATFORM" = "ohos" ]; then
         if [ -f "$asm_file" ] && ! grep -q '.hidden \\val' "$asm_file" 2>/dev/null; then
             awk '
 /^#elif CONFIG_PIC$/ {
@@ -356,7 +356,7 @@ build_ffmpeg() {
 }
 { print }
 ' "$asm_file" > "$asm_file.tmp" && mv "$asm_file.tmp" "$asm_file"
-            log_info "Patched libavutil/aarch64/asm.S for Android PIC linking"
+            log_info "Patched libavutil/aarch64/asm.S for Android/OHOS PIC linking"
         fi
     fi
 
