@@ -5,10 +5,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/scripts/common.sh"
 
 PLATFORM=$1
-ARCH=$2
+LIBARCH=$2
 LIBTYPE=${3:-static}
 
-if [ -z "$PLATFORM" ] || [ -z "$ARCH" ]; then
+log_info "---build ffmpeg: $PLATFORM/$LIBARCH/$LIBTYPE ----"
+
+if [ -z "$PLATFORM" ] || [ -z "$LIBARCH" ]; then
     log_error "Usage: build_ffmpeg.sh <platform> <arch> [libtype]"
     exit 1
 fi
@@ -17,27 +19,27 @@ setup_toolchain_for_build() {
     case "$PLATFORM" in
         android)
             source "$SCRIPT_DIR/platforms/android.sh"
-            setup_android_toolchain "$ARCH"
+            setup_android_toolchain "$LIBARCH"
             ;;
         ohos)
             source "$SCRIPT_DIR/platforms/ohos.sh"
-            setup_ohos_toolchain "$ARCH"
+            setup_ohos_toolchain "$LIBARCH"
             ;;
         ios)
             source "$SCRIPT_DIR/platforms/ios.sh"
-            setup_ios_toolchain "$ARCH"
+            setup_ios_toolchain "$LIBARCH"
             ;;
         macos)
             source "$SCRIPT_DIR/platforms/macos.sh"
-            setup_macos_toolchain "$ARCH"
+            setup_macos_toolchain "$LIBARCH"
             ;;
         linux)
             source "$SCRIPT_DIR/platforms/linux.sh"
-            setup_linux_toolchain "$ARCH"
+            setup_linux_toolchain "$LIBARCH"
             ;;
         windows)
             source "$SCRIPT_DIR/platforms/windows.sh"
-            setup_windows_toolchain "$ARCH"
+            setup_windows_toolchain "$LIBARCH"
             ;;
         *)
             log_error "Unsupported platform: $PLATFORM"
@@ -49,7 +51,7 @@ setup_toolchain_for_build() {
 build_ffmpeg() {
     setup_toolchain_for_build
 
-    local build_dir="build/$PLATFORM/$ARCH"
+    local build_dir="build/$PLATFORM/$LIBARCH"
 
     if [ -f "compat/strtod.o" ]; then
         make clean 2>/dev/null || true
@@ -61,14 +63,14 @@ build_ffmpeg() {
         rm -rf config.h config.log config.fate config.mk
     fi
 
-    local ffmpeg_arch=$(get_ffmpeg_arch "$ARCH")
+    local ffmpeg_arch=$(get_ffmpeg_arch "$LIBARCH")
     local target_os=$(get_target_os "$PLATFORM")
 
     local cfg_flags="--arch=$ffmpeg_arch"
 
     case "$PLATFORM" in
         android)
-            case "$ARCH" in
+            case "$LIBARCH" in
                 armeabi-v7a)
                     cfg_flags="$cfg_flags --cpu=cortex-a8 --enable-neon --enable-thumb"
                     ;;
@@ -182,11 +184,11 @@ build_ffmpeg() {
     local host_ldflags=""
     local hw_cfg_flags=""
 
-    local dep_x264="$OUTPUTS_DIR/$PLATFORM/x264/$ARCH"
+    local dep_x264="$OUTPUTS_DIR/$PLATFORM/x264/$LIBARCH"
     local dep_x264_inc="$dep_x264/include"
     local dep_x264_lib="$dep_x264/lib"
 
-    local dep_fdk_aac="$OUTPUTS_DIR/$PLATFORM/fdk-aac/$ARCH"
+    local dep_fdk_aac="$OUTPUTS_DIR/$PLATFORM/fdk-aac/$LIBARCH"
     local dep_fdk_aac_inc="$dep_fdk_aac/include"
     local dep_fdk_aac_lib="$dep_fdk_aac/lib"
 
@@ -230,6 +232,8 @@ build_ffmpeg() {
                 --enable-encoder=vp8_mediacodec
                 --enable-encoder=vp9_mediacodec
                 --enable-encoder=av1_mediacodec"
+            extra_cflags="$extra_cflags -fPIC  -fvisibility=hidden -fvisibility-inlines-hidden"
+            extra_ldflags="$extra_ldflags -fPIC"
             ;;
         ohos)
             hw_cfg_flags="$hw_cfg_flags
@@ -325,6 +329,36 @@ build_ffmpeg() {
     rm -rf "$build_dir"
     mkdir -p "$build_dir"
     cd "$build_dir"
+
+    # Restore or patch libavutil/aarch64/asm.S for PIC linking
+    local asm_file="$SCRIPT_DIR/source/ffmpeg/libavutil/aarch64/asm.S"
+    local asm_backup="$SCRIPT_DIR/source/ffmpeg/libavutil/aarch64/asm.S.orig"
+    log_info "$PLATFORM, $LIBARCH, $asm_file"
+    if [ -f "$asm_file" ]; then
+        # Create backup once if not exists
+        if [ ! -f "$asm_backup" ]; then
+            cp "$asm_file" "$asm_backup"
+        fi
+        # Always restore from backup first to keep source tree clean
+        cp "$asm_backup" "$asm_file"
+    fi
+
+
+    if [ "$PLATFORM" = "android" ]; then
+        if [ -f "$asm_file" ] && ! grep -q '.hidden \\val' "$asm_file" 2>/dev/null; then
+            awk '
+/^#elif CONFIG_PIC$/ {
+    print
+    print "#   ifdef __ELF__"
+    print "        .hidden \\val"
+    print "#   endif"
+    next
+}
+{ print }
+' "$asm_file" > "$asm_file.tmp" && mv "$asm_file.tmp" "$asm_file"
+            log_info "Patched libavutil/aarch64/asm.S for Android PIC linking"
+        fi
+    fi
 
     ./../../../configure $cfg_flags \
         ${host_cc:+--host-cc="$host_cc"} \
