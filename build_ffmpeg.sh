@@ -363,6 +363,12 @@ build_ffmpeg() {
         fi
     fi
 
+    if [ "$PLATFORM" = "android" ]; then
+        # patch mediacodecenc.c
+        cp "$SCRIPT_DIR/patch/ffmpeg/libavcodec/mediacodecenc.c" "$SCRIPT_DIR/source/ffmpeg/libavcodec/mediacodecenc.c"
+        log_info "Patched libavcodec/mediacodecenc.c for Android"
+    fi
+
     ./../../../configure $cfg_flags \
         ${host_cc:+--host-cc="$host_cc"} \
         ${host_cflags:+--host-cflags="$host_cflags"} \
