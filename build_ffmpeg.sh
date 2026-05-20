@@ -152,11 +152,14 @@ build_ffmpeg() {
         --enable-parser=mp3
         --enable-parser=h264
         --enable-parser=hevc
+        --enable-bsf=extract_extradata
         --enable-bsf=aac_adtstoasc
         --enable-bsf=h264_mp4toannexb
         --enable-bsf=hevc_mp4toannexb
         --enable-bsf=mp3_header_compress
         --enable-bsf=mp3_header_decompress
+        --enable-bsf=h264_metadata
+        --enable-bsf=hevc_metadata
         --enable-protocol=file
         --enable-protocol=rtmp
         --enable-protocol=http
