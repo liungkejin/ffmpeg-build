@@ -367,6 +367,11 @@ build_ffmpeg() {
         # patch mediacodecenc.c
         cp "$SCRIPT_DIR/patch/ffmpeg/libavcodec/mediacodecenc.c" "$SCRIPT_DIR/source/ffmpeg/libavcodec/mediacodecenc.c"
         log_info "Patched libavcodec/mediacodecenc.c for Android"
+        # patch mediacodec_wrapper.h / mediacodec_wrapper.c (requestKeyFrame support)
+        cp "$SCRIPT_DIR/patch/ffmpeg/libavcodec/mediacodec_wrapper.h" "$SCRIPT_DIR/source/ffmpeg/libavcodec/mediacodec_wrapper.h"
+        log_info "Patched libavcodec/mediacodec_wrapper.h for Android"
+        cp "$SCRIPT_DIR/patch/ffmpeg/libavcodec/mediacodec_wrapper.c" "$SCRIPT_DIR/source/ffmpeg/libavcodec/mediacodec_wrapper.c"
+        log_info "Patched libavcodec/mediacodec_wrapper.c for Android"
     fi
 
     ./../../../configure $cfg_flags \

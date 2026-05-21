@@ -42,8 +42,6 @@
 #include "mediacodecdec_common.h"
 #include "profiles.h"
 
-#include <sys/system_properties.h>
-
 #define INPUT_DEQUEUE_TIMEOUT_US 8000
 #define OUTPUT_DEQUEUE_TIMEOUT_US 8000
 
@@ -556,10 +554,7 @@ static av_cold int mediacodec_init(AVCodecContext *avctx)
     // 1s, otherwise they would be rounded to 0 and silently turn into an
     // all-keyframe stream.
     {
-        char sdk_buf[PROP_VALUE_MAX] = {0};
-        int sdk_int = 0;
-        if (__system_property_get("ro.build.version.sdk", sdk_buf) > 0)
-            sdk_int = atoi(sdk_buf);
+        int sdk_int = ff_Build_SDK_INT(avctx);
 
         if (sdk_int >= 25) {
             av_log(avctx, AV_LOG_DEBUG,
@@ -846,6 +841,15 @@ static int mediacodec_send(AVCodecContext *avctx,
             return ff_AMediaCodec_signalEndOfInputStream(codec);
         }
 
+        if (frame->pict_type == AV_PICTURE_TYPE_I ||
+            (frame->flags & AV_FRAME_FLAG_KEY)) {
+            int kr = ff_AMediaCodec_requestKeyFrame(codec);
+            if (kr < 0)
+                av_log(avctx, AV_LOG_DEBUG,
+                       "requestKeyFrame (surface) skipped/failed: %s\n",
+                       av_err2str(kr));
+        }
+
         if (frame->data[3])
             av_mediacodec_release_buffer((AVMediaCodecBuffer *)frame->data[3], 1);
         return 0;
@@ -868,6 +872,18 @@ static int mediacodec_send(AVCodecContext *avctx,
         copy_frame_to_buffer(avctx, frame, input_buf, input_size);
 
         pts = av_rescale_q(frame->pts, avctx->time_base, AV_TIME_BASE_Q);
+
+        // Honor force_key_frames / pict_type==I by requesting a sync frame
+        // from MediaCodec before queuing this input. This works around devices
+        // that ignore i-frame-interval and never produce IDRs on their own.
+        if (frame->pict_type == AV_PICTURE_TYPE_I ||
+            (frame->flags & AV_FRAME_FLAG_KEY)) {
+            int kr = ff_AMediaCodec_requestKeyFrame(codec);
+            if (kr < 0)
+                av_log(avctx, AV_LOG_DEBUG,
+                       "requestKeyFrame skipped/failed: %s\n",
+                       av_err2str(kr));
+        }
     } else {
         flags |= ff_AMediaCodec_getBufferFlagEndOfStream(codec);
         s->eof_sent = 1;
