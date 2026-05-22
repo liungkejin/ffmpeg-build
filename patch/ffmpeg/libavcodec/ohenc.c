@@ -242,7 +242,7 @@ static void oh_encode_on_stream_changed(OH_AVCodec *codec, OH_AVFormat *format,
     if (!OH_AVFormat_GetIntValue(format, OH_MD_KEY_VIDEO_SLICE_HEIGHT, &s->slice_height))
         s->slice_height = avctx->height;
 
-    av_log(avctx, AV_LOG_DEBUG, "stream changed: stride %d, slice height %d\n",
+    av_log(avctx, AV_LOG_DEBUG, "Stream changed: stride %d, slice height %d\n",
            s->stride, s->slice_height);
     s->got_stream_info = true;
 }
@@ -476,6 +476,31 @@ out:
     return ret;
 }
 
+static int oh_encode_request_keyframe(AVCodecContext *avctx)
+{
+    OHCodecEncContext *s = avctx->priv_data;
+    OH_AVFormat *format = OH_AVFormat_Create();
+    if (!format)
+        return AVERROR(ENOMEM);
+
+    bool b = OH_AVFormat_SetIntValue(format, OH_MD_KEY_REQUEST_I_FRAME, 1);
+    if (!b) {
+        OH_AVFormat_Destroy(format);
+        return AVERROR_EXTERNAL;
+    }
+
+    OH_AVErrCode err = OH_VideoEncoder_SetParameter(s->enc, format);
+    OH_AVFormat_Destroy(format);
+    if (err != AV_ERR_OK) {
+        int ret = ff_oh_err_to_ff_err(err);
+        av_log(avctx, AV_LOG_WARNING,
+               "requestKeyFrame failed, %d, %s\n", err, av_err2str(ret));
+        return ret;
+    }
+    av_log(avctx, AV_LOG_DEBUG, "requestKeyFrame success\n");
+    return 0;
+}
+
 static int oh_encode_send_hw_frame(AVCodecContext *avctx)
 {
     OHCodecEncContext *s = avctx->priv_data;
@@ -484,6 +509,16 @@ static int oh_encode_send_hw_frame(AVCodecContext *avctx)
         return 0;
 
     if (s->frame->buf[0]) {
+        // Honor force_key_frames / pict_type==I by requesting a sync frame
+        // from the encoder before the surface producer pushes the next frame.
+        if (s->frame->pict_type == AV_PICTURE_TYPE_I ||
+            (s->frame->flags & AV_FRAME_FLAG_KEY)) {
+            int kr = oh_encode_request_keyframe(avctx);
+            if (kr < 0)
+                av_log(avctx, AV_LOG_DEBUG,
+                       "requestKeyFrame (surface) skipped/failed: %s\n",
+                       av_err2str(kr));
+        }
         av_frame_unref(s->frame);
         return 0;
     }
@@ -566,6 +601,19 @@ static int oh_encode_send_sw_frame(AVCodecContext *avctx, OHBufferQueueItem *inp
         ret = ff_oh_err_to_ff_err(err);
         return ret;
     }
+
+    // Honor force_key_frames / pict_type==I by requesting a sync frame from
+    // the encoder before queuing this input. This works around devices that
+    // ignore i-frame-interval and never produce IDRs on their own.
+    if (frame->pict_type == AV_PICTURE_TYPE_I ||
+        (frame->flags & AV_FRAME_FLAG_KEY)) {
+        int kr = oh_encode_request_keyframe(avctx);
+        if (kr < 0)
+            av_log(avctx, AV_LOG_DEBUG,
+                   "requestKeyFrame skipped/failed: %s\n",
+                   av_err2str(kr));
+    }
+
     err = OH_VideoEncoder_PushInputBuffer(s->enc, input->index);
     if (err != AV_ERR_OK) {
         ret = ff_oh_err_to_ff_err(err);
