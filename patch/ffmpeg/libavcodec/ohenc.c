@@ -409,43 +409,63 @@ static int oh_encode_output_packet(AVCodecContext *avctx, AVPacket *pkt,
         goto out;
     }
     if (attr.flags & AVCODEC_BUFFER_FLAGS_CODEC_DATA) {
+        int64_t size = attr.size;
         av_freep(&s->extradata);
-        s->extradata = av_malloc(attr.size + AV_INPUT_BUFFER_PADDING_SIZE);
+        s->extradata = av_malloc(size + AV_INPUT_BUFFER_PADDING_SIZE);
         if (!s->extradata) {
             ret = AVERROR(ENOMEM);
             goto out;
         }
-        memset(s->extradata + attr.size, 0, AV_INPUT_BUFFER_PADDING_SIZE);
-        memcpy(s->extradata, p + attr.offset, attr.size);
-        s->extradata_size = attr.size;
+        memset(s->extradata + size, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+        memcpy(s->extradata, p + attr.offset, size);
+        s->extradata_size = size;
+
+        // Save to avctx->extradata so muxer can access it
+        av_freep(&avctx->extradata);
+        avctx->extradata = av_malloc(size + AV_INPUT_BUFFER_PADDING_SIZE);
+        if (!avctx->extradata) {
+            ret = AVERROR(ENOMEM);
+            goto out;
+        }
+        memset(avctx->extradata + size, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+        memcpy(avctx->extradata, p + attr.offset, size);
+        avctx->extradata_size = size;
+
         ret = 0;
         goto out;
     }
 
-    int64_t extradata_size = s->extradata_size;
-    s->extradata_size = 0;
-
-    if (extradata_size && (avctx->flags & AV_CODEC_FLAG_GLOBAL_HEADER)) {
-        ret = av_packet_add_side_data(pkt, AV_PKT_DATA_NEW_EXTRADATA,
-                                      s->extradata, extradata_size);
-        if (ret < 0)
-            goto out;
-        s->extradata = NULL;
-        extradata_size = 0;
-    }
-
-    ret = ff_get_encode_buffer(avctx, pkt, attr.size + extradata_size, 0);
+    ret = ff_get_encode_buffer(avctx, pkt, attr.size, 0);
     if (ret < 0)
         goto out;
 
-    if (extradata_size)
-        memcpy(pkt->data, s->extradata, extradata_size);
-
-    memcpy(pkt->data + extradata_size, p + attr.offset, attr.size);
+    memcpy(pkt->data, p + attr.offset, attr.size);
     pkt->pts = av_rescale_q(attr.pts, AV_TIME_BASE_Q, avctx->time_base);
     pkt->dts = pkt->pts;
     if (attr.flags & AVCODEC_BUFFER_FLAGS_SYNC_FRAME)
         pkt->flags |= AV_PKT_FLAG_KEY;
+
+    // Attach extradata as side data on the first packet (only in global header
+    // mode), so muxers that have already written the header (write_header
+    // before codec_data arrives) can still update the stsd/avcC entry via
+    // AV_PKT_DATA_NEW_EXTRADATA. For the other order (write_header after
+    // codec_data), avctx->extradata is already set above, so muxers will pick
+    // it up directly.
+    if (s->extradata_size && (avctx->flags & AV_CODEC_FLAG_GLOBAL_HEADER)) {
+        uint8_t *sd = av_memdup(s->extradata, s->extradata_size);
+        if (!sd) {
+            ret = AVERROR(ENOMEM);
+            goto out;
+        }
+        ret = av_packet_add_side_data(pkt, AV_PKT_DATA_NEW_EXTRADATA,
+                                      sd, s->extradata_size);
+        if (ret < 0) {
+            av_free(sd);
+            goto out;
+        }
+        // Mark consumed so subsequent packets won't carry the same side data.
+        s->extradata_size = 0;
+    }
     ret = 0;
 out:
     OH_VideoEncoder_FreeOutputBuffer(s->enc, output->index);
