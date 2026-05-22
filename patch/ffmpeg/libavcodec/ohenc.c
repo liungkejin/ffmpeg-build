@@ -443,6 +443,7 @@ static int oh_encode_output_packet(AVCodecContext *avctx, AVPacket *pkt,
 
     memcpy(pkt->data + extradata_size, p + attr.offset, attr.size);
     pkt->pts = av_rescale_q(attr.pts, AV_TIME_BASE_Q, avctx->time_base);
+    pkt->dts = pkt->pts;
     if (attr.flags & AVCODEC_BUFFER_FLAGS_SYNC_FRAME)
         pkt->flags |= AV_PKT_FLAG_KEY;
     ret = 0;
