@@ -70,6 +70,8 @@ typedef struct OHCodecEncContext {
 static const enum AVPixelFormat ohcodec_pix_fmts[] = {
     AV_PIX_FMT_OHCODEC,
     AV_PIX_FMT_NV12,
+    AV_PIX_FMT_NV21,
+    AV_PIX_FMT_YUV420P,
     AV_PIX_FMT_NONE
 };
 
@@ -240,6 +242,8 @@ static void oh_encode_on_stream_changed(OH_AVCodec *codec, OH_AVFormat *format,
     if (!OH_AVFormat_GetIntValue(format, OH_MD_KEY_VIDEO_SLICE_HEIGHT, &s->slice_height))
         s->slice_height = avctx->height;
 
+    av_log(avctx, AV_LOG_DEBUG, "stream changed: stride %d, slice height %d\n",
+           s->stride, s->slice_height);
     s->got_stream_info = true;
 }
 
@@ -499,9 +503,9 @@ static int oh_encode_send_sw_frame(AVCodecContext *avctx, OHBufferQueueItem *inp
     if (!s->got_stream_info) {
         // This shouldn't happen, add a warning message.
         av_log(avctx, AV_LOG_WARNING,
-               "decoder didn't notify stream info, try get format explicitly\n");
+               "encoder didn't notify stream info, try get format explicitly\n");
 
-        OH_AVFormat *format = OH_VideoEncoder_GetOutputDescription(s->enc);
+        OH_AVFormat *format = OH_VideoEncoder_GetInputDescription(s->enc);
         if (!format) {
             av_log(avctx, AV_LOG_ERROR, "GetOutputDescription failed\n");
             return AVERROR_EXTERNAL;
