@@ -374,6 +374,12 @@ build_ffmpeg() {
         log_info "Patched libavcodec/mediacodec_wrapper.c for Android"
     fi
 
+    if [ "$PLATFORM" = "ohos" ]; then
+        # patch ohenc.c (use avctx->time_base instead of pkt_timebase for pts rescale)
+        cp "$SCRIPT_DIR/patch/ffmpeg/libavcodec/ohenc.c" "$SCRIPT_DIR/source/ffmpeg/libavcodec/ohenc.c"
+        log_info "Patched libavcodec/ohenc.c for OHOS"
+    fi
+
     ./../../../configure $cfg_flags \
         ${host_cc:+--host-cc="$host_cc"} \
         ${host_cflags:+--host-cflags="$host_cflags"} \
